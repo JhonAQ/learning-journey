@@ -1,0 +1,28 @@
+# ============================================================
+# Laboratorio: Agente de Triage RAG - SaludPlus Perú
+# ============================================================
+# Dependencias base (ya instaladas en el entorno)
+streamlit==1.59.0
+
+# --- LangChain core e integraciones ---
+langchain==0.3.11
+langchain-community==0.3.11
+langchain-google-genai==2.0.6
+
+# --- Base de datos vectorial local ---
+# Se usa chromadb directamente con langchain_community.vectorstores.Chroma
+chromadb==1.5.9
+
+# --- Embeddings locales (por defecto) ---
+# Usa modelos de sentence-transformers sin consumir cuota de API.
+langchain-huggingface==0.1.2
+sentence-transformers==3.3.1
+
+# --- Configuración y utilidades ---
+pydantic-settings==2.14.2
+python-dotenv==1.2.2
+
+# --- Opcional: OpenAI ---
+# Descomenta las siguientes líneas si quieres usar OpenAI en lugar de Gemini.
+# langchain-openai==0.2.11
+# openai==1.57.0

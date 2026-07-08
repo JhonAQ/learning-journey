@@ -1,132 +1,308 @@
-import streamlit as st
-import google.generativeai as genai
-import json
-
-# ==========================================
-# 1. BASE DE CONOCIMIENTO (RAG Simulado)
-# ==========================================
-# En la vida real esto vendría de una base de datos SQL o MongoDB.
-# Aquí lo inyectamos como contexto para que el modelo no alucine.
-BASE_CONOCIMIENTO = {
-    "empresa": "SaludPlus Perú",
-    "sedes": ["Lima Centro", "Lima Sur", "Arequipa Norte", "Trujillo Centro"],
-    "horarios_atencion": "Lunes a Sábado de 8:00 AM a 8:00 PM. Emergencias 24/7.",
-    "seguros_aceptados": ["EPS Rimac", "EPS Pacifico", "EsSalud (solo referidos)", "Mapfre"],
-    "especialidades": ["Medicina General", "Pediatría", "Cardiología", "Ginecología"],
-    "proceso_citas": "Las citas se agendan mediante la App SaludPlus o presencialmente con DNI."
-}
-
-# ==========================================
-# 2. SYSTEM PROMPT MAESTRO (Guardrails & Triage)
-# ==========================================
-SYSTEM_INSTRUCTION = f"""
-Eres el 'Agente de Triage Inteligente' de la red de clínicas SaludPlus Perú.
-Tu misión es clasificar la consulta del paciente y decidir si la respondes tú (administrativa) o si la derivas a un humano (urgencia médica o queja compleja).
-
-REGLAS ESTRICTAS (GUARDRAILS):
-1. NO ERES MÉDICO. NUNCA des diagnósticos, ni recetes medicamentos.
-2. Si el paciente menciona dolor fuerte, sangrado, accidentes, fiebre altísima o síntomas graves, es una URGENCIA.
-3. Si el paciente pide hablar con un humano, está muy enojado, o hace una pregunta compleja que no está en la base de datos, DERÍVALO.
-4. Para consultas administrativas, usa ESTA base de datos exclusivamente: {json.dumps(BASE_CONOCIMIENTO, ensure_ascii=False)}
-
-FORMATO DE SALIDA OBLIGATORIO:
-Debes responder SIEMPRE y ÚNICAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON.
-Estructura del JSON:
-{{
-    "accion": "RESPONDER" o "DERIVAR",
-    "nivel_riesgo_clinico": "BAJO", "MEDIO", o "ALTO",
-    "respuesta_al_usuario": "Tu respuesta empática y cordial aquí (solo si la acción es RESPONDER). Si es DERIVAR, indícale brevemente que lo transferirás.",
-    "resumen_para_humano": "Resumen técnico de 1 línea del problema (solo si la acción es DERIVAR. Si es RESPONDER, déjalo vacío.)"
-}}
+"""
+app.py
+==========================================================
+FASE 3: Interfaz de Usuario con Streamlit
+Diseño limpio y funcional para SaludPlus Peru - Triage IA
 """
 
-# ==========================================
-# 3. CONFIGURACIÓN DE LA INTERFAZ (Streamlit)
-# ==========================================
-st.set_page_config(page_title="SaludPlus - IA Triage", page_icon="🏥", layout="centered")
+import os
 
-st.title("🏥 SaludPlus Perú - Asistente IA")
-st.markdown("Este agente clasifica tu consulta y decide si responder o escalar a un humano.")
+import streamlit as st
 
-# Configuración de API Key en la barra lateral
-api_key = st.sidebar.text_input("Ingresa tu API Key de Gemini:", type="password")
-if not api_key:
-    st.warning("👈 Por favor, ingresa tu API Key de Google Gemini en la barra lateral para comenzar.")
-    st.stop()
+from agent_engine import create_memory, process_query
+from config import ensure_project_dirs, get_llm, get_settings
 
-# Configurar el modelo de Google Gemini
-genai.configure(api_key=api_key)
-# Usamos un modelo reciente y le inyectamos las instrucciones del sistema
-# NOTA: Los nombres de modelo cambian con el tiempo. Si falla, verifica los disponibles en:
-# https://ai.google.dev/gemini-api/docs/models/gemini
-model = genai.GenerativeModel(
-    model_name="gemini-2.5-flash",
-    system_instruction=SYSTEM_INSTRUCTION,
-    generation_config={"response_mime_type": "application/json"} # Forzamos salida en JSON
+
+# ============================================================
+# 1. CONFIGURACION DE PAGINA
+# ============================================================
+st.set_page_config(
+    page_title="SaludPlus Peru | Triage IA",
+    page_icon="🏥",
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
-# Inicializar el historial de chat en la sesión
+
+# ============================================================
+# 2. ESTILOS MINIMALES Y FUNCIONALES
+# ============================================================
+st.markdown(
+    """
+    <style>
+        .main-header {
+            background-color: #1A5F7A;
+            padding: 1.2rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 1rem;
+        }
+        .main-header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .main-header p {
+            margin: 0.2rem 0 0 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #2D6A4F;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .route-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 0.4rem;
+        }
+        .route-rag { background-color: #E8F5E9; color: #2D6A4F; }
+        .route-det { background-color: #FFF3E0; color: #D68C45; }
+        .route-err { background-color: #FFEBEE; color: #B42318; }
+        .source-card {
+            background-color: #FAFAFA;
+            border: 1px solid #E0E0E0;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .source-tag {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #1A5F7A;
+            background-color: #E3F2FD;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# 3. ESTADO DE SESION
+# ============================================================
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Mostrar el historial de mensajes
-for msg in st.session_state.chat_history:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
-        # Si el mensaje fue derivado, mostramos una alerta visual
-        if msg.get("derivado"):
-            st.error(f"🚨 **CASO DERIVADO A HUMANO**\n\n**Riesgo:** {msg['riesgo']}\n\n**Resumen técnico:** {msg['resumen_tecnico']}")
+if "memory" not in st.session_state:
+    st.session_state.memory = create_memory()
 
-# ==========================================
-# 4. LÓGICA DE PROCESAMIENTO (El Chat)
-# ==========================================
-pregunta = st.chat_input("Escribe tu consulta médica o administrativa...")
 
-if pregunta:
-    # 1. Mostrar la pregunta del usuario
-    st.session_state.chat_history.append({"role": "user", "content": pregunta})
-    with st.chat_message("user"):
-        st.write(pregunta)
+# ============================================================
+# 4. BARRA LATERAL
+# ============================================================
+with st.sidebar:
+    st.title("SaludPlus")
+    st.caption("Triage IA v1.0")
 
-    # 2. Procesar con Gemini
-    with st.chat_message("assistant"):
-        with st.spinner("Analizando urgencia e intención..."):
-            try:
-                # Enviamos la pregunta al modelo
-                response = model.generate_content(pregunta)
+    settings = get_settings()
+    default_key = (
+        settings.google_api_key if settings.llm_provider == "google" else settings.openai_api_key
+    )
 
-                # Parseamos la respuesta JSON del modelo
-                datos_ia = json.loads(response.text)
+    api_key = st.text_input(
+        "API key",
+        value=default_key,
+        type="password",
+        help="Sobrescribe la variable de entorno para esta sesion.",
+        label_visibility="collapsed",
+        placeholder="Pega tu API key aqui...",
+    )
 
-                accion = datos_ia.get("accion", "DERIVAR")
-                riesgo = datos_ia.get("nivel_riesgo_clinico", "ALTO")
-                texto_respuesta = datos_ia.get("respuesta_al_usuario", "Lo siento, necesito transferirte con un humano.")
-                resumen_tecnico = datos_ia.get("resumen_para_humano", "")
+    connection_ok = False
+    if api_key:
+        if settings.llm_provider == "google":
+            os.environ["GOOGLE_API_KEY"] = api_key
+        else:
+            os.environ["OPENAI_API_KEY"] = api_key
+        try:
+            get_llm(settings)
+            connection_ok = True
+        except Exception:
+            connection_ok = False
 
-                # Imprimir la respuesta al usuario
-                st.write(texto_respuesta)
+    if api_key and connection_ok:
+        st.success("Conectado")
+    elif api_key and not connection_ok:
+        st.warning("Sin conexion")
+    else:
+        st.info("Key requerida")
 
-                # Si el modelo decide derivar, mostramos la interfaz del "Human in the Loop"
-                es_derivado = accion == "DERIVAR"
-                if es_derivado:
-                    st.error(f"🚨 **ALERTA DE SISTEMA: TRANSFERENCIA A ASESOR HUMANO/MÉDICO**\n\n**Riesgo Clínico:** {riesgo}\n\n**Nota para el asesor:** {resumen_tecnico}")
+    st.divider()
 
-                # Guardar en el historial
-                st.session_state.chat_history.append({
+    st.markdown(f"**LLM:** {settings.llm_provider.upper()}")
+    st.caption(settings.gemini_model if settings.llm_provider == "google" else settings.openai_model)
+    st.markdown(f"**Embeddings:** {settings.embedding_provider.upper()}")
+
+    st.divider()
+
+    if st.button("Nueva conversacion", use_container_width=True, type="primary"):
+        st.session_state.chat_history = []
+        st.session_state.memory = create_memory()
+        st.rerun()
+
+
+# ============================================================
+# 5. HEADER
+# ============================================================
+st.markdown(
+    """
+    <div class="main-header">
+        <h1>Centro de Triage IA</h1>
+        <p><span class="status-dot"></span>Sistema activo — Red de clinicas SaludPlus Peru</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# 6. VERIFICAR BASE VECTORIAL
+# ============================================================
+ensure_project_dirs(settings)
+
+if not os.path.exists(settings.chroma_persist_dir) or not os.listdir(settings.chroma_persist_dir):
+    st.error("No se encontro la base de conocimiento. Ejecuta: python ingest.py")
+    st.stop()
+
+
+# ============================================================
+# 7. CONTENIDO PRINCIPAL EN DOS COLUMNAS
+# ============================================================
+chat_col, context_col = st.columns([1.8, 1])
+
+with chat_col:
+    st.subheader("Conversacion")
+
+    if not st.session_state.chat_history:
+        st.info(
+            "Bienvenido al asistente de triage. Puedes consultar horarios, seguros, "
+            "especialidades o el proceso de citas. Si tu caso es una urgencia o requiere "
+            "diagnostico, te derivaremos con un profesional.",
+        )
+
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+            if msg.get("role") == "assistant":
+                routing = msg.get("routing", "rag")
+                badge_class = "route-rag" if routing == "rag" else "route-det" if routing == "deterministic" else "route-err"
+                badge_text = "Respuesta RAG" if routing == "rag" else "Derivacion automatica" if routing == "deterministic" else "Error de sistema"
+                st.markdown(
+                    f'<span class="route-label {badge_class}">{badge_text}</span>',
+                    unsafe_allow_html=True,
+                )
+
+                if msg.get("derivado"):
+                    st.error(
+                        f"**Derivacion a asesor humano**  \n"
+                        f"Riesgo clinico: {msg['riesgo']}  \n"
+                        f"Nota: {msg['resumen_tecnico']}"
+                    )
+
+    pregunta = st.chat_input("Escribe tu consulta...")
+
+    if pregunta:
+        if not api_key:
+            st.error("Ingresa tu API key en el panel lateral.")
+            st.stop()
+
+        st.session_state.chat_history.append({"role": "user", "content": pregunta})
+        with st.chat_message("user"):
+            st.write(pregunta)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Analizando..."):
+                response = process_query(pregunta, st.session_state.memory)
+
+            result = response["output"]
+            es_derivado = result.accion == "DERIVAR"
+            routing = response["routing"]
+
+            badge_class = "route-rag" if routing == "rag" else "route-det" if routing == "deterministic" else "route-err"
+            badge_text = "Respuesta RAG" if routing == "rag" else "Derivacion automatica" if routing == "deterministic" else "Error de sistema"
+
+            st.write(result.respuesta_al_usuario)
+            st.markdown(
+                f'<span class="route-label {badge_class}">{badge_text}</span>',
+                unsafe_allow_html=True,
+            )
+
+            if es_derivado:
+                st.error(
+                    f"**Derivacion a asesor humano**  \n"
+                    f"Riesgo clinico: {result.nivel_riesgo_clinico}  \n"
+                    f"Nota: {result.resumen_para_humano}"
+                )
+
+            st.session_state.chat_history.append(
+                {
                     "role": "assistant",
-                    "content": texto_respuesta,
+                    "content": result.respuesta_al_usuario,
                     "derivado": es_derivado,
-                    "riesgo": riesgo,
-                    "resumen_tecnico": resumen_tecnico
-                })
+                    "riesgo": result.nivel_riesgo_clinico,
+                    "resumen_tecnico": result.resumen_para_humano,
+                    "routing": routing,
+                }
+            )
 
-            except json.JSONDecodeError as e:
-                st.error(f"⚠️ La IA no respondió en formato JSON válido. Se deriva automáticamente por seguridad. Detalle: {e}")
-            except Exception as e:
-                error_msg = str(e)
-                if "404" in error_msg or "not found" in error_msg.lower():
-                    st.error(f"⚠️ El modelo de IA no está disponible o el nombre cambió. Detalle: {e}")
-                elif "API key" in error_msg or "permission" in error_msg.lower():
-                    st.error(f"⚠️ Problema con tu API Key. Verifica que sea válida y tenga permisos. Detalle: {e}")
-                else:
-                    st.error(f"⚠️ Error de procesamiento. Se deriva automáticamente por seguridad. Detalle: {e}")
+            if response["sources"]:
+                st.session_state.last_sources = response["sources"]
+
+with context_col:
+    st.subheader("Contexto")
+
+    with st.container(border=True):
+        st.markdown("**Documentos recuperados**")
+        sources = st.session_state.get("last_sources", [])
+        if sources:
+            for src in sources:
+                category = src.metadata.get("category", "general")
+                with st.container():
+                    st.markdown(
+                        f'<span class="source-tag">{category}</span>',
+                        unsafe_allow_html=True,
+                    )
+                    st.caption(src.page_content[:200] + "...")
+        else:
+            st.caption(
+                "Aun no hay documentos recuperados. Escribe una consulta administrativa "
+                "para ver los chunks que usa el RAG."
+            )
+
+    with st.container(border=True):
+        st.markdown("**Sobre SaludPlus**")
+        st.caption(
+            "Red de 6 clinicas en Peru. Atencion presencial, teleconsulta y "
+            "emergencias 24/7 en sedes seleccionadas."
+        )
+        st.caption("Seguros: EPS Rimac, EPS Pacifico, EsSalud (referidos), Mapfre, particular.")
+
+    with st.container(border=True):
+        st.markdown("**Como funciona**")
+        st.caption(
+            "1. **Triage:** detectamos urgencias, enojo o complejidad medica.  \n"
+            "2. **Recuperacion:** buscamos los 3 documentos mas relevantes.  \n"
+            "3. **Respuesta:** el LLM responde solo con informacion validada."
+        )
+
+
+# ============================================================
+# 8. FOOTER
+# ============================================================
+st.divider()
+st.caption("Laboratorio academico — Datos completamente ficticios — LangChain + ChromaDB + Streamlit")

@@ -1,0 +1,148 @@
+{
+  "empresa": {
+    "nombre": "SaludPlus Perú",
+    "razon_social": "SaludPlus S.A.C.",
+    "ruc": "20548796321",
+    "mision": "Brindar atención médica accesible, oportuna y de calidad a familias peruanas."
+  },
+  "sedes": [
+    {
+      "nombre": "Lima Centro",
+      "direccion": "Av. Arequipa 1234, Cercado de Lima",
+      "telefono": "01-612-3456",
+      "horario_atencion": "Lunes a Sábado de 8:00 AM a 8:00 PM. Emergencias 24/7.",
+      "servicios": [
+        "Medicina General",
+        "Pediatría",
+        "Cardiología",
+        "Ginecología"
+      ]
+    },
+    {
+      "nombre": "Lima Norte",
+      "direccion": "Av. Tomas Valle 4321, Independencia",
+      "telefono": "01-623-4567",
+      "horario_atencion": "Lunes a Sábado de 7:00 AM a 9:00 PM. Domingos de 8:00 AM a 2:00 PM.",
+      "servicios": [
+        "Medicina General",
+        "Pediatría",
+        "Dermatología",
+        "Nutrición"
+      ]
+    },
+    {
+      "nombre": "Lima Sur",
+      "direccion": "Av. Javier Prado Sur 987, Surco",
+      "telefono": "01-634-5678",
+      "horario_atencion": "Lunes a Sábado de 8:00 AM a 8:00 PM. Emergencias 24/7.",
+      "servicios": [
+        "Medicina General",
+        "Cardiología",
+        "Traumatología",
+        "Neumología"
+      ]
+    },
+    {
+      "nombre": "Arequipa Norte",
+      "direccion": "Av. Ejército 567, Cayma",
+      "telefono": "054-123-456",
+      "horario_atencion": "Lunes a Sábado de 8:00 AM a 7:00 PM.",
+      "servicios": [
+        "Medicina General",
+        "Pediatría",
+        "Ginecología"
+      ]
+    },
+    {
+      "nombre": "Trujillo Centro",
+      "direccion": "Jr. Pizarro 345, Trujillo",
+      "telefono": "044-987-654",
+      "horario_atencion": "Lunes a Sábado de 8:00 AM a 8:00 PM. Domingos de 9:00 AM a 1:00 PM.",
+      "servicios": [
+        "Medicina General",
+        "Cardiología",
+        "Dermatología"
+      ]
+    },
+    {
+      "nombre": "Cusco Valle",
+      "direccion": "Av. La Cultura 789, Cusco",
+      "telefono": "084-456-789",
+      "horario_atencion": "Lunes a Sábado de 8:00 AM a 6:00 PM.",
+      "servicios": [
+        "Medicina General",
+        "Pediatría",
+        "Medicina Interna"
+      ]
+    }
+  ],
+  "seguros_aceptados": [
+    {
+      "nombre": "EPS Rimac",
+      "tipo": "EPS",
+      "notas": "Se acepta en todas las sedes. Paciente debe presentar DNI y carnet vigente."
+    },
+    {
+      "nombre": "EPS Pacífico",
+      "tipo": "EPS",
+      "notas": "Se acepta en todas las sedes. Requierte orden médica para especialidades."
+    },
+    {
+      "nombre": "EsSalud",
+      "tipo": "Seguro social",
+      "notas": "Solo atención con referido de EsSalud. No se atiende sin documento de derivación."
+    },
+    {
+      "nombre": "Mapfre",
+      "tipo": "Seguro privado",
+      "notas": "Cobertura sujeta a cartilla. Coordinar previamente con el área de seguros."
+    },
+    {
+      "nombre": "Particular",
+      "tipo": "Pago directo",
+      "notas": "Se acepta pago en efectivo, tarjeta o Yape/Plin."
+    }
+  ],
+  "procesos": [
+    {
+      "titulo": "Agendamiento de citas",
+      "descripcion": "Las citas se agendan mediante la App SaludPlus, el portal web o presencialmente con DNI. Para especialidades se requiere orden médica o derivación según el seguro."
+    },
+    {
+      "titulo": "Cancelación o reprogramación",
+      "descripcion": "Puedes cancelar o reprogramar hasta 2 horas antes de tu cita sin costo. Después de ese plazo se cobra una penalidad del 30%."
+    },
+    {
+      "titulo": "Atención de emergencias",
+      "descripcion": "Las sedes con emergencias 24/7 son Lima Centro y Lima Sur. Para emergencias médicas graves se recomienda llamar al 105 o acudir al hospital más cercano."
+    }
+  ],
+  "reglas_triage": [
+    {
+      "titulo": "Urgencias médicas",
+      "descripcion": "Síntomas como dolor intenso en el pecho, sangrado, convulsiones, pérdida de conocimiento, dificultad para respirar o fiebre muy alta deben derivarse inmediatamente a un médico humano."
+    },
+    {
+      "titulo": "Consultas administrativas",
+      "descripcion": "Horarios, seguros aceptados, especialidades, direcciones y procesos de citas pueden ser respondidas por el asistente virtual usando la base de conocimiento."
+    },
+    {
+      "titulo": "Diagnósticos y recetas",
+      "descripcion": "El asistente NUNCA debe diagnosticar, recetar medicamentos o recomendar tratamientos. Estas solicitudes deben derivarse a un profesional de salud."
+    }
+  ],
+  "preguntas_frecuentes": [
+    {
+      "pregunta": "¿Qué documentos debo llevar a mi primera cita?",
+      "respuesta": "DNI, carnet del seguro (si aplica) y orden médica o referido según la especialidad."
+    },
+    {
+      "pregunta": "¿Puedo pagar con tarjeta?",
+      "respuesta": "Sí, en todas las sedes se acepta pago con tarjeta, efectivo, Yape y Plin."
+    },
+    {
+      "pregunta": "¿Tienen teleconsulta?",
+      "respuesta": "Sí, disponible para Medicina General y Nutrición en horario de lunes a sábado de 9:00 AM a 6:00 PM."
+    }
+  ]
+}
